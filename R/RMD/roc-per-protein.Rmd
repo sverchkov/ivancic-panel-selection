@@ -1,0 +1,232 @@
+---
+title: "Per protein ROC curves with full data"
+author: "Yuriy Sverchkov"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library("dplyr")
+library("ggplot2")
+library("knitr")
+summarized.df = readRDS( "../data-clean/summarized.v2.rds" ) %>% filter( !is.na( Geom.Mean ) )
+
+#age.bin.list = c( "Under 50", "50-54", "55-59", "60-64", "65-9", "70+" )
+polyp.locations = c( "Colon", "Rectum", "Colon and Rectum" )
+downregulated = list("FETUB"
+                   , "Epidermal Growth Factor Receptor"
+                   , "CD44"
+                   , "PI16"
+                   , "Dpp4"
+                   , "Sod3" )
+```
+
+```{r roc function}
+
+# These are from
+# https://www.r-bloggers.com/simple-roc-plots-with-ggplot2-part-1/
+# https://www.r-bloggers.com/simple-roc-plots-with-ggplot2-part-2/
+
+rocdata <- function(grp, pred){
+  # Produces x and y co-ordinates for ROC curve plot
+  # Arguments: grp - labels classifying subject status
+  #            pred - values of each observation
+  # Output: List with 2 components:
+  #         roc = data.frame with x and y co-ordinates of plot
+  #         stats = data.frame containing: area under ROC curve, p value, upper and lower 95% confidence interval
+
+  grp <- as.factor(grp)
+  if (length(pred) != length(grp)) {
+    stop("The number of classifiers must match the number of data points")
+  } 
+
+  if (length(levels(grp)) > 2) {
+    stop("There must only be 2 values for the classifier")
+  }
+
+  cut <- unique(pred)
+  tp <- sapply(cut, function(x) length(which(pred > x & grp == levels(grp)[2])))
+  fn <- sapply(cut, function(x) length(which(pred < x & grp == levels(grp)[2])))
+  fp <- sapply(cut, function(x) length(which(pred > x & grp == levels(grp)[1])))
+  tn <- sapply(cut, function(x) length(which(pred < x & grp == levels(grp)[1])))
+  tpr <- tp / (tp + fn)
+  fpr <- fp / (fp + tn)
+  roc = data.frame(x = fpr, y = tpr)
+  roc <- roc[order(roc$x, roc$y),]
+
+  i <- 2:nrow(roc)
+  auc <- (roc$x[i] - roc$x[i - 1]) %*% (roc$y[i] + roc$y[i - 1])/2
+
+  pos <- pred[grp == levels(grp)[2]]
+  neg <- pred[grp == levels(grp)[1]]
+  q1 <- auc/(2-auc)
+  q2 <- (2*auc^2)/(1+auc)
+  se.auc <- sqrt(((auc * (1 - auc)) + ((length(pos) -1)*(q1 - auc^2)) + ((length(neg) -1)*(q2 - auc^2)))/(length(pos)*length(neg)))
+  ci.upper <- auc + (se.auc * 0.96)
+  ci.lower <- auc - (se.auc * 0.96)
+
+  se.auc.null <- sqrt((1 + length(pos) + length(neg))/(12*length(pos)*length(neg)))
+  z <- (auc - 0.5)/se.auc.null
+  p <- 2*pnorm(-abs(z))
+
+  stats <- data.frame (auc = auc,
+                       p.value = p,
+                       ci.upper = ci.upper,
+                       ci.lower = ci.lower
+                       )
+
+  return (list(roc = roc, stats = stats))
+}
+
+rocplot.single <- function(grp, pred, title = "ROC Plot", p.value = FALSE){
+  require(ggplot2)
+  plotdata <- rocdata(grp, pred)
+
+  if (p.value == TRUE){
+    annotation <- with(plotdata$stats, paste("AUC=",signif(auc, 2), " (P=", signif(p.value, 2), ")", sep=""))
+  } else {
+    annotation <- with(plotdata$stats, paste("AUC=",signif(auc, 2), " (95%CI ", signif(ci.upper, 2), " - ", signif(ci.lower, 2), ")", sep=""))
+  }
+
+  p <- ggplot(plotdata$roc, aes(x = x, y = y)) +
+      geom_line(aes(colour = "")) +
+      geom_abline (intercept = 0, slope = 1) +
+      theme_bw() +
+      scale_x_continuous("False Positive Rate (1-Specificity)") +
+      scale_y_continuous("True Positive Rate (Sensitivity)") +
+      scale_colour_manual(labels = annotation, values = "#000000") +
+      ggtitle( title ) +
+      coord_cartesian( expand = FALSE ) +
+      coord_fixed() +
+      theme(legend.justification=c(1,0), 
+           legend.position=c(1,0),
+           legend.title = element_blank()
+           #legend.key = theme_blank()
+           )
+  return(p)
+}
+```
+
+```{r rocplotter for subsets}
+rocplot.subsets <- function(grp, pred, subsets, title = "ROC Plot", p.value = FALSE){
+  require(ggplot2)
+  subset.names = levels( subsets )
+  plotdata <- Map( function ( subset ){
+    selection = subsets == subset
+    selection[ is.na( selection ) ] = FALSE
+    rocdata( grp[ selection ], pred[ selection ] )
+  }, subset.names )
+  
+  annotations <- Reduce( c, Map( function ( plotdatum, subset ) {
+    if (p.value == TRUE){
+      annotation <- with(plotdatum$stats, paste(subset, ": AUC=",signif(auc, 2), " (P=", signif(p.value, 2), ")", sep=""))
+    } else {
+      annotation <- with(plotdatum$stats, paste(subset, ": AUC=",signif(auc, 2), " (95%CI ", signif(ci.upper, 2), " - ", signif(ci.lower, 2), ")", sep=""))
+    }
+  }, plotdata, subset.names ) )
+  
+  roc = Reduce( rbind.data.frame, Map( function ( plotdatum, subset ) {
+      datum = plotdatum$roc
+      datum$stratum = subset
+      datum
+    } , plotdata, subset.names ) )
+  
+  p <- ggplot(roc, aes( x = x, y = y, colour = stratum ) ) +
+      geom_line() +
+      geom_abline (intercept = 0, slope = 1) +
+      theme_bw() +
+      scale_x_continuous("False Positive Rate (1-Specificity)") +
+      scale_y_continuous("True Positive Rate (Sensitivity)") +
+      scale_colour_brewer( breaks = subset.names, labels = annotations, type = "qual", palette = "Dark2" ) +
+      ggtitle( title ) +
+      #coord_cartesian( expand = FALSE ) +
+      coord_fixed() +
+      theme(#legend.justification=c(1,0), 
+           #legend.position=c(1,0),
+           legend.title = element_blank()
+           #legend.key = theme_blank()
+           )
+  return(p)
+}
+```
+
+```{r rmd plotter}
+rmd.rocs = function( df, downregulation.list = NULL ){
+  proteins = unique( df$Protein.Name )
+  for( protein in proteins ){
+
+    protein.df = df %>% filter( Protein.Name == protein )
+    
+    # Determine up/down regulated
+    upregulated = !(protein %in% downregulation.list)
+    plot.title = paste( protein, if (upregulated) "(upregulation)" else "(downregulation)" )
+    protein.df = protein.df %>% mutate( Predictor = if (upregulated) Geom.Mean else -Geom.Mean )
+  
+    print( kable( protein.df %>% group_by( Protein.Name, Label ) %>% summarize( Count = n() ) ) )
+    
+    print( rocplot.single( grp = protein.df$Label, pred = protein.df$Predictor, title = plot.title ) )
+    
+    for.gender.df = protein.df %>% mutate( Gender = factor( Gender, c("M","F") ) ) %>% filter( !is.na( Gender ) )
+    
+    print( kable( for.gender.df %>% group_by( Protein.Name, Label, Gender ) %>% summarize( Count = n() ) ) )
+    
+    print( rocplot.subsets( grp = for.gender.df$Label, pred = for.gender.df$Predictor, subsets = for.gender.df$Gender, title = plot.title ) )
+    
+    #tryCatch({
+    #  for.pl.df = protein.df %>%
+    #    mutate( Polyp.Loc = factor( Polyp.Loc, polyp.locations ) ) %>%
+    #    filter( !is.na( Polyp.Loc ) )
+    #  
+    #  p <- rocplot.subsets( grp = for.pl.df$Label, pred = for.pl.df$Predictor, subsets = for.pl.df$Polyp.Loc, title = plot.title )
+    #  
+    #  print( kable( for.pl.df %>% group_by( Protein.Name, Label, Polyp.Loc ) %>% summarize( Count = n() ) ) )
+    #  
+    #  print( p )
+    #}, error = function(e) {} )  
+  }
+}
+```
+
+## Low risk vs Cancer
+
+```{r extract low risk vs cancer data}
+df.low.v.c = summarized.df %>%
+  filter( Risk.category.Cancer.stage %in% c( "N/A", "Low", "Stage 1", "Stage 2", "Stage 3" ) ) %>%
+  mutate( Label = Risk.category.Cancer.stage %in% c( "Stage 1", "Stage 2", "Stage 3" ) )
+
+#"Sample counts"
+
+#kable( df.low.v.c %>% group_by( Cancer, Protein.Name ) %>% summarize( n() ) )
+```
+Label=TRUE is cancer.
+
+```{r plot the rocs in low risk vs cancer}
+rmd.rocs( df.low.v.c, downregulation.list = downregulated )
+```
+
+## Low risk vs High risk
+```{r extract low risk vs. high risk data}
+df.low.v.high = summarized.df %>%
+  filter( Risk.category.Cancer.stage %in% c( "N/A", "Low", "High" ) ) %>%
+  mutate( Label = Risk.category.Cancer.stage == "High" )
+```
+Label=TRUE is high risk.
+
+```{r plot low risk vs high risk}
+rmd.rocs( df.low.v.high, downregulation.list = downregulated )
+```
+
+## Stage 1+2 vs. Stage 3
+```{r extract stages 1 2 vs. stage 3 data}
+df.12.v.3 = summarized.df %>%
+  filter( Risk.category.Cancer.stage %in% c( "Stage 1", "Stage 2", "Stage 3" ) ) %>%
+  mutate( Label = Risk.category.Cancer.stage == "Stage 3" )
+```
+
+Label=TRUE is Stage 3.
+
+```{r plot stages 1 2 vs stage 3}
+rmd.rocs( df.12.v.3, downregulation.list = downregulated )
+```

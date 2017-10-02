@@ -1,0 +1,193 @@
+---
+title: "Question 4 Analysis"
+author: "Yuriy Sverchkov"
+date: "3/15/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library("dplyr")
+library("ggplot2")
+```
+
+Comparison of pre- and post- polypectomy data.
+
+## Difference between the pre- and post- polypectomy distributions
+```{r prepare data}
+summarized.df = readRDS("../data-clean/summarized.rds")
+
+q4.df = summarized.df %>%
+  mutate( Log.Measurement = log( Geom.Mean ) ) %>%
+  filter( grepl( "(Pre|Post)$", Sample.ID ) ) %>%
+  mutate(
+    Tuple.ID = gsub( "[_-]?(Pre|Post)$", "", Sample.ID ),
+    Pre = grepl( "Pre$", Sample.ID ),
+    Measurement = ifelse( Pre, "Pre", "Post" ) )
+
+proteins = ( summarized.df %>% ungroup() %>% distinct( Protein.Name ) )$Protein.Name
+n.proteins = length( proteins )
+```
+
+Protein measurements (the logarithm of the geometric mean (over replicates) of area ratios):
+```{r plot pre vs post}
+ggplot( q4.df, aes( x=Protein.Name, y=Log.Measurement, fill = Measurement ) ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+```{r make a dataframe for t-test}
+keep = function( which, what ) {
+  x = ifelse( which, what, NA )
+  if ( all( is.na( x ) ) ) NA
+  else x[ !is.na( x ) ]
+}
+
+test.df =
+  q4.df %>%
+  group_by( Tuple.ID, Protein.Name ) %>%
+  summarize(
+    Pre.Value = keep( Pre, Geom.Mean ),
+    Post.Value = keep( !Pre, Geom.Mean ),
+    Pre.LogValue = keep( Pre, Log.Measurement ),
+    Post.LogValue = keep( !Pre, Log.Measurement ),
+    Pre.Risk = keep( Pre, Risk.category.Cancer.stage ) ) %>%
+  mutate(
+    Pre.minus.Post = Pre.Value - Post.Value,
+    Pre.to.Post.Ratio = Pre.Value / Post.Value )
+```
+
+```{r constants for t-test}
+alpha = 0.05
+p.value.threshold = alpha/n.proteins
+```
+
+For each protein, we use a paired t-test for comparing the results.
+Since we test `r n.proteins` proteins, we use a Bonferroni correction and consider only p-values below $`r alpha` / `r n.proteins` = `r p.value.threshold`$ significant.
+```{r do t-tests}
+t.test.results = Map( function ( protein ){
+  local.df = test.df %>% filter( Protein.Name == protein )
+  t.test( x = local.df$Pre.Value, y = local.df$Post.Value, paired = TRUE )
+}, proteins )
+
+print( "Statistically significant differences found in" )
+for ( protein in proteins ) {
+  p = t.test.results[[protein]]$p.value
+  if( p < p.value.threshold )
+    print( paste( protein, "p-value =", p ) )
+}
+```
+Detailed t-test results are in the Supplementary section.
+
+## Differences by risk group
+Plot of differences:
+```{r plot differences}
+ggplot( test.df, aes( x=Protein.Name, y=Pre.minus.Post ) ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+Broken down by pre-polypectomy risk:
+```{r plot differences by risk}
+ggplot( test.df, aes( x=Protein.Name, y=Pre.minus.Post, fill = Pre.Risk ) ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+Wilcoxon test to determine whether differences in the high-risk group are significantly different from differences in the low-risk group (Bonferroni corrected):
+```{r difference wilcox test}
+wilcox.difference.results = Map( function (protein) {
+  local.df = test.df %>% filter( Protein.Name == protein )
+  low.df = local.df %>% filter( Pre.Risk == "Low" )
+  high.df = local.df %>% filter( Pre.Risk == "High" )
+  wilcox.test( x = low.df$Pre.minus.Post, y = high.df$Pre.minus.Post )
+}, proteins)
+
+significant.w.d.r =
+  names(
+    which(
+      Reduce( c, Map(
+        function (result) result$p.value < p.value.threshold,
+        wilcox.difference.results )
+      )
+    )
+  )
+
+if ( length( significant.w.d.r ) > 0 ){
+  print( "Significant differences in:")
+  for ( protein in proteins ) {
+    p = wilcox.difference.results[[protein]]$p.value
+    if( p < p.value.threshold )
+      print( paste( protein, "p-value =", p ) )
+  }
+} else print( "No significant differences found" )
+```
+Detailed Wilcoxon test results are in the Supplementary section.
+
+## Ratios
+Plot of ratios:
+```{r plot ratios}
+ggplot( test.df, aes( x=Protein.Name, y=Pre.to.Post.Ratio ) ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+Broken down by pre-polypectomy risk:
+```{r plot ratios by risk}
+ggplot( test.df, aes( x=Protein.Name, y=Pre.to.Post.Ratio, fill = Pre.Risk ) ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+Wilcoxon test to determine whether ratios in the high-risk group are significantly different from ratios in the low-risk group (Bonferroni corrected):
+```{r ratio wilcox test}
+wilcox.ratio.results = Map( function (protein) {
+  local.df = test.df %>% filter( Protein.Name == protein )
+  low.df = local.df %>% filter( Pre.Risk == "Low" )
+  high.df = local.df %>% filter( Pre.Risk == "High" )
+  wilcox.test( x = low.df$Pre.to.Post.Ratio, y = high.df$Pre.to.Post.Ratio )
+}, proteins)
+
+significant.w.r.r =
+  names(
+    which(
+      Reduce( c, Map(
+        function (result) result$p.value < p.value.threshold,
+        wilcox.ratio.results )
+      )
+    )
+  )
+
+if ( length( significant.w.r.r ) > 0 ){
+  print( "Significant differences in:")
+  for ( protein in proteins ) {
+    p = wilcox.difference.results[[protein]]$p.value
+    if( p < p.value.threshold )
+      print( paste( protein, "p-value =", p ) )
+  }
+} else print( "No significant differences found" )
+```
+Detailed Wilcoxon test results are in the Supplementary section.
+
+## Supplementary
+### Detailed t-test results:
+```{r print all t-tests}
+t.test.results
+```
+
+### Detailed Wilcoxon test results for differences
+```{r print all wilcox diff tests}
+wilcox.difference.results
+```
+
+### Detailed Wilcoxon test results for ratios
+```{r print all wilcox ratio tests}
+wilcox.ratio.results
+```

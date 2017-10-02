@@ -1,0 +1,132 @@
+---
+title: "Analysis of pre-polypectomy results"
+author: "Yuriy Sverchkov"
+date: "4/18/2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library("dplyr")
+library("ggplot2")
+library("tidyr")
+library("knitr")
+
+age.bin.list = c( "Under 50", "50-54", "55-59", "60-64", "65-9", "70+" )
+polyp.locations = c( "Colon", "Colon and Rectum", "Rectum" )
+```
+
+```{r prepare data}
+summarized.df = readRDS("../data-clean/summarized.v2.rds")
+
+pre.df = summarized.df %>%
+  filter( grepl( "Pre$", Sample.ID ) ) %>%
+  mutate( `Log-measurement` = log( Geom.Mean ) ) %>%
+  rename( `Risk category` = Risk.category.Cancer.stage )
+
+proteins = unique( pre.df$Protein )
+n.proteins = length( proteins )
+```
+
+Protein measurements (the logarithm of the geometric mean (over replicates) of area ratios):
+```{r plot pre vs post, fig.height=10}
+ggplot( pre.df, aes( x=Protein, y=`Log-measurement` ) ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+```{r constants for tests}
+alpha = 0.05
+p.value.threshold = alpha/n.proteins
+```
+
+## Comparing high-risk vs. low-risk
+
+```{r low-high counts}
+kable( pre.df %>%
+         group_by( Protein, `Risk category` ) %>%
+         summarise( Count = n() ) %>% ungroup() %>%
+         spread( `Risk category`, Count ), caption = "Counts" )
+```
+
+Since we test `r n.proteins` proteins, we use a Bonferroni correction and consider only p-values below $`r alpha` / `r n.proteins` = `r p.value.threshold`$ significant.
+
+```{r plot differences by risk}
+ggplot( pre.df, aes( x="", y=`Log-measurement`, fill = `Risk category` ) ) +
+  facet_wrap( ~Protein, ncol = 3, scales = "free" ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+Wilcoxon test to determine whether levels of the high-risk group are significantly different from levels of the low-risk group:
+```{r difference wilcox test}
+wilcox.result = Reduce( rbind.data.frame, Map( function (protein) {
+  local.df = pre.df %>% filter( Protein == protein )
+  low.df = local.df %>% filter( `Risk category` == "Low" )
+  high.df = local.df %>% filter( `Risk category` == "High" )
+  result = wilcox.test( x = low.df$`Log-measurement`, y = high.df$`Log-measurement` )
+  data.frame( Protein = protein, `p-value` = result$p.value, `Wilcoxon statistic` = result$statistic )
+}, proteins) )
+
+rownames( wilcox.result ) = NULL
+
+kable( wilcox.result, caption = "Two-sided Wilcoxon rank sum test" )
+```
+
+
+### Breakdown by gender
+
+```{r pre, lov vs high by gender, fig.height=10}
+gender.df = pre.df %>% filter( Gender %in% c("M","F") )
+
+kable( gender.df %>%
+         filter( Protein == "APCS" ) %>%
+         group_by( `Risk category`, Gender ) %>%
+         summarise( Count = n() ) %>% ungroup() %>%
+         spread( `Risk category`, Count ), caption = "Counts" )
+
+ggplot( gender.df, aes( x=Gender, y=`Log-measurement`, fill = `Risk category` ) ) +
+  facet_wrap( ~Protein, ncol = 3, scales = "free" ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+### Breakdown by age
+
+```{r plot pre vs post by age, fig.height=10}
+age.df = pre.df %>% filter( Age.Bin %in% age.bin.list )
+
+kable( age.df %>%
+         filter( Protein == "APCS" ) %>%
+         group_by( `Risk category`, Age.Bin ) %>%
+         summarise( Count = n() ) %>% ungroup() %>%
+         spread( `Risk category`, Count ), caption = "Counts" )
+
+ggplot( age.df, aes( x=Age.Bin, y=`Log-measurement`, fill = `Risk category` ) ) +
+  facet_wrap( ~Protein, ncol = 2, scales = "free" ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```
+
+### Breakdown by polyp location
+```{r plot pre vs post by location, fig.height=10}
+poloc.df = pre.df %>% filter( Polyp.Loc %in% polyp.locations )
+
+kable( poloc.df %>%
+         filter( Protein == "APCS" ) %>%
+         group_by( `Risk category`, Polyp.Loc ) %>%
+         summarise( Count = n() ) %>% ungroup() %>%
+         spread( `Risk category`, Count ), caption = "Counts" )
+
+ggplot( poloc.df, aes( x=Polyp.Loc, y=`Log-measurement`, fill = `Risk category` ) ) +
+  facet_wrap( ~Protein, ncol = 2, scales = "free" ) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_minimal()
+```

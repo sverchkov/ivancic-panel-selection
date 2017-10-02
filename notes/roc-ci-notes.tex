@@ -1,0 +1,32 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+
+\title{Notes about creating confidence bands for receiver operating characteristic curves}
+
+\author{Yuriy Sverchkov}
+
+\begin{document}
+\maketitle
+
+We follow Tilbury et al.(2000) in estimating confidence bands for receiver operating characteristic (ROC) curves.
+Their methods computes an probability surface for each ROC curve point.
+The idea is, for each point $\hat x, \hat y$ on the ROC curve, for each point $x, y$ on the ROC axes, to compute the exact probability of getting the $\hat x$ false positive rate (FPR) and $\hat y$ true positive rate (TPR) given true values $x, y$.
+
+Particularly, they show that the FPR and TPR can be treated as independent, given that, for the FPR, if we observed $a_1$ true negatives and $a_0$ false positives, the probability of the observation given that the true FPR is $x: q < x < r$, is proportional to:
+\begin{equation}
+ \int_q^r x^{a_0} (1-x)^{a_1} dx = \int_0^r x^{a_0} (1-x)^{a_1} dx - \int_0^r x^{a_0} (1-x)^{a_1} dx
+\end{equation}
+and
+\begin{equation}
+\int_0^s x^{a_0} (1-x)^{a_1} dx = \Gamma(a_0+1) \Gamma(a_1+1) \sum_{k=0}^{a_1} \frac{(1-s)^k s^{a_0 + a_1 + 1 - k}}{\Gamma(k+1) \Gamma(a_0 + a_1 + 2 - k)}
+\end{equation}
+where the normalization constant for this distribution is clearly
+\begin{equation}
+\int_0^1 x^{a_0} (1-x)^{a_1} dx = B(a_0+1, a_1+1) = \frac{\Gamma(a_0+1) \Gamma(a_1+1)}{\Gamma(a_0+a_1+2)} \text{.}
+\end{equation}
+Therefore,
+\begin{equation}
+P(a_0, a_1 | x<s) = \Gamma(a_0+a_1+2) \sum_{k=0}^{a_1} \frac{(1-s)^k s^{a_0 + a_1 + 1 - k}}{\Gamma(k+1) \Gamma(a_0 + a_1 + 2 - k)}
+\end{equation}
+\end{document}
