@@ -11,7 +11,7 @@ summarized.df = readRDS( "rds-data/summarized.v2.rds" ) %>% filter( !is.na( Geom
 
 downregulated = list("FETUB", "EEGFR", "CD44", "PI16", "DPP4", "SOD3" )
 
-# These are from
+# These are adapted from
 # https://www.r-bloggers.com/simple-roc-plots-with-ggplot2-part-1/
 # https://www.r-bloggers.com/simple-roc-plots-with-ggplot2-part-2/
 
