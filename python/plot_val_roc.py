@@ -35,4 +35,4 @@ if __name__ == '__main__':
         title = ''
     
     log.debug( 'Making pdf, model {}, panel {}'.format(long_names[result['method']],str(result['panel'])) )
-    analysis_utilities.plotROCwithCRfromScores( result['score'], result['label'], plot_title = '', pdf_file = outfilename, plot = False )
+    analysis_utilities.plotROCwithCRfromScores( result['score'], result['label'], plot_title = title, pdf_file = outfilename, plot = False )

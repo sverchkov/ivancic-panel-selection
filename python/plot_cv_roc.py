@@ -34,7 +34,7 @@ def plot_roc_curve( result_list, title = None, output_filename = None ):
     log.debug( 'Scores for ROC "'+str(title) + '": '+str(scores) )
     log.debug( 'Labels for ROC "'+str(title) + '": '+str(labels) )
 
-    analysis_utilities.plotROCwithCRfromScores( scores, labels, plot_title = title, pdf_file = output_filename )
+    analysis_utilities.plotROCwithCRfromScores( scores, labels, plot_title = title, pdf_file = output_filename, plot = False )
     
 def get_best_method_panel( result_list ):
     
