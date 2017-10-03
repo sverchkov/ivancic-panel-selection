@@ -1,7 +1,7 @@
 # Makefile for R data processing, creating files for python
 RCMD = rscript R/rds-to-questions-cli.R
-RTRAINING = R/data-clean/training.rds
-RVALIDATION = R/data-clean/validation.rds
+RTRAINING = rds-data/training.rds
+RVALIDATION = rds-data/validation.rds
 PYTHON = python3
 PLOT_CV_ROC = python/plot_cv_roc.py
 PLOT_VAL_ROC = python/plot_val_roc.py
