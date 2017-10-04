@@ -7,6 +7,7 @@ PYTHON = python3
 RCMD = rscript R/rds-to-questions-cli.R
 
 # Python command utilities
+XLSX_TO_CSV = $(PYTHON) python/xlsx_to_single_csv.py
 PLOT_CV_ROC = $(PYTHON) python/plot_cv_roc.py
 PLOT_VAL_ROC = $(PYTHON) python/plot_val_roc.py
 RUN_CV = $(PYTHON) python/run_cv_analysis.py
@@ -166,4 +167,5 @@ clean-data/q2-validation.csv: $(VALIDATION)
 clean-data/q3-validation.csv: $(VALIDATION)
 	$(RCMD) $@ q3 validation none $(VALIDATION)
 
-
+raw-data/all.csv: raw-data/NewMMDataALL_ForPublication.xlsx raw-data/All_OldMasterMixData_For_Publication.xlsx
+	$(XLSX_TO_CSV) raw-data/NewMMDataALL_ForPublication.xlsx raw-data/All_OldMasterMixData_For_Publication.xlsx -o raw-data/csv/all.csv
