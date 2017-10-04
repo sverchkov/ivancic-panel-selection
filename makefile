@@ -1,12 +1,22 @@
-# Makefile for R data processing, creating files for python
+# Makefile for running the analysis
+
+# Python executable
+PYTHON = python3
+
+# R scripts
 RCMD = rscript R/rds-to-questions-cli.R
+
+# Python command utilities
+PLOT_CV_ROC = $(PYTHON) python/plot_cv_roc.py
+PLOT_VAL_ROC = $(PYTHON) python/plot_val_roc.py
+RUN_CV = $(PYTHON) python/run_cv_analysis.py
+RUN_VAL = $(PYTHON) python/run_val_analysis.py
+
+# .rds data files
 RTRAINING = rds-data/training.rds
 RVALIDATION = rds-data/validation.rds
-PYTHON = python3
-PLOT_CV_ROC = python/plot_cv_roc.py
-PLOT_VAL_ROC = python/plot_val_roc.py
-RUN_CV = python/run_cv_analysis.py
-RUN_VAL = python/run_val_analysis.py
+
+# Lists
 REPORT_ROCS = \
  reports/roc_cv_q1_p2.pdf\
  reports/roc_cv_q1_p3.pdf\
@@ -65,54 +75,54 @@ imputed-clean-data: q1-training-imputed.csv q2-training-imputed.csv q3-training-
 # CV pickle files
 
 python-results/roc_cv_q%_p2.pkl: clean-data/q%-training.csv python-results
-	$(PYTHON) $(RUN_CV) $< 2 $@
+	$(RUN_CV) $< 2 $@
 
 python-results/roc_cv_q%_p3.pkl: clean-data/q%-training.csv python-results
-	$(PYTHON) $(RUN_CV) $< 3 $@
+	$(RUN_CV) $< 3 $@
 
 python-results/roc_cv_q%_p4.pkl: clean-data/q%-training.csv python-results
-	$(PYTHON) $(RUN_CV) $< 4 $@
+	$(RUN_CV) $< 4 $@
 
 python-results/roc_cv_q%_p5.pkl: clean-data/q%-training.csv python-results
-	$(PYTHON) $(RUN_CV) $< 5 $@
+	$(RUN_CV) $< 5 $@
 
 # Validation pickle files
 
 python-results/validation_q%_p2.pkl: clean-data/q%-training.csv clean-data/q%-validation.csv
 	mkdir -p $(@D)
-	$(PYTHON) $(RUN_VAL) $^ 2 $@
+	$(RUN_VAL) $^ 2 $@
 
 python-results/validation_q%_p3.pkl: clean-data/q%-training.csv clean-data/q%-validation.csv
 	mkdir -p $(@D)
-	$(PYTHON) $(RUN_VAL) $^ 3 $@
+	$(RUN_VAL) $^ 3 $@
 
 python-results/validation_q%_p4.pkl: clean-data/q%-training.csv clean-data/q%-validation.csv
 	mkdir -p $(@D)
-	$(PYTHON) $(RUN_VAL) $^ 4 $@
+	$(RUN_VAL) $^ 4 $@
 
 python-results/validation_q%_p5.pkl: clean-data/q%-training.csv clean-data/q%-validation.csv
 	mkdir -p $(@D)
-	$(PYTHON) $(RUN_VAL) $^ 5 $@
+	$(RUN_VAL) $^ 5 $@
 
 # PDF figures in paper
 reports/roc_cv_q1_p5_clean.pdf: python-results/roc_cv_q1_p5.pkl python-results
-	$(PYTHON) $(PLOT_CV_ROC) $< $@
+	$(PLOT_CV_ROC) $< $@
 
 reports/validation_q1_p5_clean.pdf: python-results/validation_q1_p5.pkl python-results
-	$(PYTHON) $(PLOT_VAL_ROC) python-results/validation_q1_p5.pkl reports/validation_q1_p5_clean.pdf
+	$(PLOT_VAL_ROC) python-results/validation_q1_p5.pkl reports/validation_q1_p5_clean.pdf
 
 reports/roc_cv_q3_p4_clean.pdf: python-results/roc_cv_q3_p4.pkl python-results
-	$(PYTHON) $(PLOT_CV_ROC) python-results/roc_cv_q1_p5.pkl
+	$(PLOT_CV_ROC) python-results/roc_cv_q1_p5.pkl
 
 reports/validation_q3_p4_clean.pdf: python-results/validation_q3_p4.pkl python-results
-	$(PYTHON) $(PLOT_VAL_ROC) python-results/validation_q3_p4.pkl reports/validation_q3_p4_clean.pdf
+	$(PLOT_VAL_ROC) python-results/validation_q3_p4.pkl reports/validation_q3_p4_clean.pdf
 
 # PDF reports recipes
 reports/roc_%.pdf: python-results/roc_%.pkl reports
-	$(PYTHON) $(PLOT_CV_ROC) $< $@ t
+	$(PLOT_CV_ROC) $< $@ t
 
 reports/validation_%.pdf: python-results/validation_%.pkl reports
-	$(PYTHON) $(PLOT_VAL_ROC) $< $@ t
+	$(PLOT_VAL_ROC) $< $@ t
 
 # Directory creation recipes
 clean-data python-results reports:
@@ -155,3 +165,5 @@ clean-data/q2-validation.csv: $(VALIDATION)
 
 clean-data/q3-validation.csv: $(VALIDATION)
 	$(RCMD) $@ q3 validation none $(VALIDATION)
+
+
