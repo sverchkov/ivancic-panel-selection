@@ -3,8 +3,12 @@
 # Python executable
 PYTHON = python3
 
+# R executable
+R = rscript
+
 # R scripts
-RCMD = rscript R/rds-to-questions-cli.R
+RAW_TO_RDS = $(R) R/construct-features.R
+RCMD = $(R) R/rds-to-questions-cli.R
 
 # Python command utilities
 XLSX_TO_CSV = $(PYTHON) python/xlsx_to_single_csv.py
@@ -126,7 +130,7 @@ reports/validation_%.pdf: python-results/validation_%.pkl reports
 	$(PLOT_VAL_ROC) $< $@ t
 
 # Directory creation recipes
-clean-data python-results reports:
+clean-data python-results reports rds-data:
 	mkdir -p $@
 
 # Clean data file recipes
@@ -167,5 +171,8 @@ clean-data/q2-validation.csv: $(VALIDATION)
 clean-data/q3-validation.csv: $(VALIDATION)
 	$(RCMD) $@ q3 validation none $(VALIDATION)
 
-raw-data/all.csv: raw-data/NewMMDataALL_ForPublication.xlsx raw-data/All_OldMasterMixData_For_Publication.xlsx
+rds-data/labeled.features.rds: raw-data/csv/all.csv raw-data/csv/labels.csv rds-data
+	$(RAW_TO_RDS)
+
+raw-data/csv/all.csv: raw-data/NewMMDataALL_ForPublication.xlsx raw-data/All_OldMasterMixData_For_Publication.xlsx
 	$(XLSX_TO_CSV) raw-data/NewMMDataALL_ForPublication.xlsx raw-data/All_OldMasterMixData_For_Publication.xlsx -o raw-data/csv/all.csv
