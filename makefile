@@ -166,13 +166,13 @@ clean-data/q3-training.csv: clean-data $(RTRAINING)
 clean-data/q1-validation.csv: clean-data $(RVALIDATION)
 	$(RCMD) $@ q1 validation none $(RVALIDATION)
 
-clean-data/q2-validation.csv: $(VALIDATION)
-	$(RCMD) $@ q2 validation none $(VALIDATION)
+clean-data/q2-validation.csv: $(RVALIDATION)
+	$(RCMD) $@ q2 validation none $(RVALIDATION)
 
-clean-data/q3-validation.csv: $(VALIDATION)
-	$(RCMD) $@ q3 validation none $(VALIDATION)
+clean-data/q3-validation.csv: $(RVALIDATION)
+	$(RCMD) $@ q3 validation none $(RVALIDATION)
 
-$(VALIDATION): rds-data/labeled.features.rds raw-data/csv/training-ids.csv
+$(RTRAINING) $(RVALIDATION): rds-data/labeled.features.rds raw-data/csv/training-ids.csv
 	$(MK_TRAINING_VALIDATION)
 
 rds-data/labeled.features.rds: raw-data/csv/all.csv raw-data/csv/labels.csv rds-data

@@ -37,7 +37,7 @@ saveRDS( features.df, "rds-data/features.rds" )
 # Attach class label columns
 labels = read.csv( "raw-data/csv/labels.csv", stringsAsFactors = FALSE )
 
-labeled.features.df = left_join( big.df, labels )
+labeled.features.df = left_join( features.df, labels )
 
 # Save as .rds
 saveRDS( labeled.features.df, "rds-data/labeled.features.rds" )

@@ -24,7 +24,13 @@ if __name__ == '__main__':
 #        for question, panel_size in [(1,5), (3,4)]:
     infilename = argv[1]
     outfilename = argv[2]
-    withtitle = argv[3]
+
+    if len(argv) > 3:
+        withtitle = argv[3]
+    else:
+        withtitle = None
+
+
     
     with open( infilename, 'rb' ) as infile:
         result = load( infile )

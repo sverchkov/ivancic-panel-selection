@@ -84,7 +84,10 @@ if __name__ == '__main__':
 
     results_filename = argv[1]
     pdf_filename = argv[2]
-    maketitle = argv[3]
+    if len(argv) > 3:
+        maketitle = argv[3]
+    else:
+        maketitle = None
 
     with open( results_filename, 'rb' ) as infile:
         result = load( infile )

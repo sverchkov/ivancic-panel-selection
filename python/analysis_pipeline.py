@@ -150,7 +150,7 @@ def run_analysis_pipeline( data, panel_size, output_file_name = None ):
         with open( output_file_name, 'wb') as outfile:
             dump( list( results ), outfile )
             
-        log.debug( "Panel size %d results saved", question, panel_size )
+        log.debug( "Panel size %d results saved", panel_size )
     
     return ( results )
 
