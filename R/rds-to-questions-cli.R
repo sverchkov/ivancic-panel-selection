@@ -10,7 +10,7 @@ the.args <- commandArgs( TRUE )
 # Argument 1: output file
 # Argument 2: question #
 # Argument 3: training/validation
-# Argument 4: impute (omit not supported yet)
+# Argument 4: impute or none (omit not supported yet)
 # Argument 5: training .rds file
 # Argument 6: validation .rds file (if validation)
 
@@ -22,8 +22,8 @@ training <- readRDS( the.args[5] )
 if( is.validation && is.impute ) validation <- readRDS( the.args[6] )
 
 condition.filter <- switch( question,
-                           q1 = c("N/A","Low","Stage 1","Stage 2","Stage 3"),
-                           q2 = c("N/A","Low","High"),
+                           q1 = c("Low","Stage 1","Stage 2","Stage 3"),
+                           q2 = c("Low","High"),
                            q3 = c("Stage 1","Stage 2","Stage 3") )
 condition.label <- switch( question,
                           q1 = c("Stage 1","Stage 2","Stage 3"),
@@ -32,11 +32,11 @@ condition.label <- switch( question,
 
 specifyToQuestion <- function( data )
   data %>%
-    filter( Risk.category.Cancer.stage %in% condition.filter ) %>%
-    mutate( label = ifelse( Risk.category.Cancer.stage %in% condition.label, 1, 0 ) ) %>%
-    select( -Sample.ID, -Master.Mix, -Risk.category.Cancer.stage, -Colonoscopy.Pathology )
+    filter( Risk.or.Stage %in% condition.filter ) %>%
+    mutate( label = ifelse( Risk.or.Stage %in% condition.label, 1, 0 ) ) %>%
+    select( -Sample.ID, -Risk.or.Stage )
 
-training = specifyToQuestion( training )
+training <- specifyToQuestion( training )
 
 output.data <-
   if ( is.impute ) {

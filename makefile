@@ -8,6 +8,7 @@ R = rscript
 
 # R scripts
 RAW_TO_RDS = $(R) R/construct-features.R
+MK_TRAINING_VALIDATION = $(R) R/make-training-and-validation.R
 RCMD = $(R) R/rds-to-questions-cli.R
 
 # Python command utilities
@@ -170,6 +171,9 @@ clean-data/q2-validation.csv: $(VALIDATION)
 
 clean-data/q3-validation.csv: $(VALIDATION)
 	$(RCMD) $@ q3 validation none $(VALIDATION)
+
+$(VALIDATION): rds-data/labeled.features.rds raw-data/csv/training-ids.csv
+	$(MK_TRAINING_VALIDATION)
 
 rds-data/labeled.features.rds: raw-data/csv/all.csv raw-data/csv/labels.csv rds-data
 	$(RAW_TO_RDS)
