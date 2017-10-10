@@ -118,7 +118,7 @@ reports/validation_q1_p5_clean.pdf: python-results/validation_q1_p5.pkl python-r
 	$(PLOT_VAL_ROC) python-results/validation_q1_p5.pkl reports/validation_q1_p5_clean.pdf
 
 reports/roc_cv_q3_p4_clean.pdf: python-results/roc_cv_q3_p4.pkl python-results
-	$(PLOT_CV_ROC) python-results/roc_cv_q1_p5.pkl
+	$(PLOT_CV_ROC) python-results/roc_cv_q3_p4.pkl reports/roc_cv_q3_p4_clean.pdf
 
 reports/validation_q3_p4_clean.pdf: python-results/validation_q3_p4.pkl python-results
 	$(PLOT_VAL_ROC) python-results/validation_q3_p4.pkl reports/validation_q3_p4_clean.pdf
